@@ -131,11 +131,31 @@ def filter_downloads(
         download_folders = asset.get("downloadFolders", {})
         default_folder = download_folders.get("default", {})
         filetype_categories = default_folder.get("downloadFiletypeCategories", {})
-        zip_category = filetype_categories.get("zip", {})
-        download_list = zip_category.get("downloads", [])
+
+        if isinstance(filetype_categories, dict):
+            zip_category = filetype_categories.get("zip", {})
+        elif isinstance(filetype_categories, list):
+            zip_category = next(
+                (
+                    category
+                    for category in filetype_categories
+                    if isinstance(category, dict) and category.get("title") == "zip"
+                ),
+                {},
+            )
+        else:
+            zip_category = {}
+
+        download_list = (
+            zip_category.get("downloads", []) if isinstance(zip_category, dict) else []
+        )
+        if not isinstance(download_list, list):
+            continue
 
         # Find matching download.
         for download in download_list:
+            if not isinstance(download, dict):
+                continue
             if download.get("attribute") == target_attribute:
                 downloads.append(
                     MaterialDownload(
