@@ -6,6 +6,9 @@
 
 set -euo pipefail
 
+SAM3D_OBJECTS_COMMIT="${SAM3D_OBJECTS_COMMIT:-81a82373a3a7f4cbb00bd5b32aaf6b4d0f659ddd}"
+SAM3_COMMIT="${SAM3_COMMIT:-11dec2936de97f2857c1f76b66d982d5a001155d}"
+
 echo "========================================="
 echo "SAM3D Installation Script"
 echo "========================================="
@@ -163,6 +166,9 @@ if [ ! -d "sam-3d-objects" ]; then
 else
     echo "✓ sam-3d-objects already exists"
 fi
+echo "Checking out SAM 3D Objects commit: ${SAM3D_OBJECTS_COMMIT}"
+git -C sam-3d-objects fetch origin
+git -C sam-3d-objects checkout --detach "${SAM3D_OBJECTS_COMMIT}"
 
 # Clone SAM3 repository.
 if [ ! -d "SAM3" ]; then
@@ -172,6 +178,9 @@ if [ ! -d "SAM3" ]; then
 else
     echo "✓ SAM3 already exists"
 fi
+echo "Checking out SAM3 commit: ${SAM3_COMMIT}"
+git -C SAM3 fetch origin
+git -C SAM3 checkout --detach "${SAM3_COMMIT}"
 
 echo ""
 echo "Step 3: Installing SAM3..."
