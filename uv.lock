@@ -1181,7 +1181,7 @@ wheels = [
 
 [[package]]
 name = "openai-agents"
-version = "0.6.4"
+version = "0.6.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "griffe" },
@@ -1192,9 +1192,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/36/826ce8ad497904a1becdedef80326c2fe932c754646b77405a8dc4cd49f7/openai_agents-0.6.4.tar.gz", hash = "sha256:07836865ed9c37946523d44b2d87ad375673b6558e783fa086db004a892331ec", size = 2022961, upload-time = "2025-12-19T06:42:55.356Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/e3/41f4d83df6b9080ccba444b79e150aa3b57182bcc0deeb6adabe08678407/openai_agents-0.6.9.tar.gz", hash = "sha256:e55623827b4a1b11d66ec0084bd2b9ea2c6d60f233e04547803af433967e2fdb", size = 2152399, upload-time = "2026-01-20T01:57:00.04Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/ed/f2282debf62c52241959b111d2e35105b43b2ea6ff060833734405bb4d0f/openai_agents-0.6.4-py3-none-any.whl", hash = "sha256:d14635c1fa0ee39e79b81e5cab2f22dd5024772d3dbc0770d8307fd2548b3951", size = 241982, upload-time = "2025-12-19T06:42:53.92Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/9f/1cb6d64487c185c8e775c66314e5c047ca307b3bcd6c5edb97af6c0b5d6e/openai_agents-0.6.9-py3-none-any.whl", hash = "sha256:9e05a96b7610a7a89d6fd9ba379ff840a1aebca150eebcc4d505743ee458f50b", size = 284423, upload-time = "2026-01-20T01:56:57.54Z" },
 ]
 
 [[package]]
@@ -1814,7 +1814,7 @@ dev = [
 requires-dist = [
     { name = "autoflake", specifier = ">=2.3.1" },
     { name = "black", specifier = ">=25.1.0" },
-    { name = "bpy", specifier = "==4.5.4" },
+    { name = "bpy", specifier = "==4.5.4", index = "https://download.blender.org/pypi/" },
     { name = "coacd", specifier = ">=1.0.7" },
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "diffusers", specifier = ">=0.35.1" },
@@ -1833,7 +1833,7 @@ requires-dist = [
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "open-clip-torch", specifier = ">=2.20.0" },
     { name = "openai", specifier = ">=2.8.0" },
-    { name = "openai-agents", specifier = ">=0.6.4" },
+    { name = "openai-agents", specifier = ">=0.6.5,<0.7" },
     { name = "opencv-python", specifier = ">=4.10.0.84,<4.12" },
     { name = "pybind11", specifier = ">=3.0.1" },
     { name = "pygltflib", specifier = ">=1.16.5" },

@@ -32,6 +32,10 @@ from openai import Timeout
 from openai.types.shared import Reasoning
 
 from scenesmith.agent_utils.action_logger import log_scene_action
+from scenesmith.agent_utils.chat_completions_image_filter import (
+    ChatCompletionsToolImageFilter,
+    CompositeCallModelInputFilter,
+)
 from scenesmith.agent_utils.checkpoint_state import initialize_checkpoint_attributes
 from scenesmith.agent_utils.intra_turn_image_filter import IntraTurnImageFilter
 from scenesmith.agent_utils.physics_tools import check_physics_violations
@@ -372,20 +376,26 @@ class BaseStatefulAgent(ABC):
         return designer_session, critic_session
 
     def _create_run_config(self) -> RunConfig:
-        """Create RunConfig with intra-turn image filter if enabled.
+        """Create RunConfig with model input filters.
 
-        The filter strips images from older observe_scene outputs within a turn,
-        keeping only the last N observations with images intact. This reduces
-        token usage when agents call observe_scene multiple times within a turn.
+        Intra-turn stripping reduces token usage when agents call observe_scene
+        multiple times within a turn. The Chat Completions image filter keeps
+        image-returning tools usable if the SDK is configured away from the
+        default Responses API.
 
         Returns:
-            RunConfig with call_model_input_filter set if enabled, empty otherwise.
+            RunConfig with call_model_input_filter set.
         """
+        input_filters = []
         intra_cfg = self.cfg.session_memory.intra_turn_observation_stripping
         if intra_cfg.enabled:
-            return RunConfig(call_model_input_filter=IntraTurnImageFilter(cfg=self.cfg))
+            input_filters.append(IntraTurnImageFilter(cfg=self.cfg))
 
-        return RunConfig()
+        input_filters.append(ChatCompletionsToolImageFilter())
+
+        return RunConfig(
+            call_model_input_filter=CompositeCallModelInputFilter(input_filters)
+        )
 
     def _should_reset_to_checkpoint(
         self,
