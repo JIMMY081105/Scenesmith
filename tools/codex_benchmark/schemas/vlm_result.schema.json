@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VlmInspectionResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scene_type",
+    "main_objects",
+    "is_simulation_ready",
+    "collision_risk",
+    "confidence"
+  ],
+  "properties": {
+    "scene_type": {
+      "type": "string",
+      "enum": [
+        "classroom",
+        "office",
+        "bedroom",
+        "shelf_scene",
+        "furniture_overlay",
+        "manipuland_overlay",
+        "material_texture",
+        "object_render",
+        "robot_scene",
+        "unknown"
+      ]
+    },
+    "main_objects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "is_simulation_ready": {
+      "type": "boolean"
+    },
+    "collision_risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -74,6 +75,9 @@ class BenchmarkSuite:
 
     def run(self) -> dict[str, str]:
         codex_version = self.runner.version()
+        # Fold the live codex version into cache keys so upgrading the binary
+        # does not replay stale cached results from a previous version.
+        self.cache.codex_version = codex_version
         self.store.start_run(
             run_id=self.run_id,
             config_hash=self.config.stable_hash(),
@@ -108,6 +112,8 @@ class BenchmarkSuite:
             self._run_structured()
         if self._enabled("image") and self.config.image.enabled:
             self._run_image()
+        if self._enabled("vlm") and self.config.vlm.enabled:
+            self._run_vlm()
         if self._enabled("resume") and self.config.resume.enabled:
             self._run_resume()
         if self._enabled("cache") and self.config.cache_test.enabled:
@@ -126,12 +132,17 @@ class BenchmarkSuite:
                     scenario=scenario,
                     call_index=call_index,
                 )
+                expected_marker = (
+                    f"CODEX_BENCHMARK_OK run_id={self.run_id} "
+                    f"scenario={scenario} call_index={call_index}"
+                )
                 self._run_one(
                     module="stress",
                     scenario=scenario,
                     call_index=call_index,
                     prompt=prompt,
                     max_retries=self.config.stress.max_retries,
+                    expected_marker=expected_marker,
                 )
 
     def _run_structured(self) -> None:
@@ -177,6 +188,40 @@ class BenchmarkSuite:
                 expected_image_path=str(output_path),
             )
 
+    def _run_vlm(self) -> None:
+        scenario = "scene_image_json"
+        items = load_vlm_manifest(self.config.vlm.manifest_path, self.config.vlm.dataset_root)
+        available = [item for item in items if Path(item["path"]).exists()]
+        if len(available) < self.config.vlm.count:
+            self.logger.warning(
+                "VLM manifest has only %s available images, requested %s",
+                len(available),
+                self.config.vlm.count,
+            )
+        for call_index, item in enumerate(available[: self.config.vlm.count]):
+            prompt = self.config.vlm.prompt_template.format(
+                run_id=self.run_id,
+                scenario=scenario,
+                call_index=call_index,
+                image_path=item["path"],
+            )
+            self._run_one(
+                module="vlm",
+                scenario=scenario,
+                call_index=call_index,
+                prompt=prompt,
+                schema_path=self.config.vlm.schema_path,
+                image_paths=[item["path"]],
+                max_retries=self.config.vlm.max_retries,
+                retry_backoff_seconds=self.config.vlm.retry_backoff_seconds,
+                classification_expected=item,
+                run_metadata={
+                    "requested_count": self.config.vlm.count,
+                    "available_count": len(available),
+                    "insufficient_dataset_size": len(available) < self.config.vlm.count,
+                },
+            )
+
     def _run_resume(self) -> None:
         scenario = "checkpoint_resume"
         for call_index in range(self.config.resume.total_calls):
@@ -185,12 +230,16 @@ class BenchmarkSuite:
                 call_index=call_index,
                 scenario=scenario,
             )
+            expected_marker = (
+                f"CODEX_RESUME_OK run_id={self.run_id} call_index={call_index}"
+            )
             completed = self._run_one(
                 module="resume",
                 scenario=scenario,
                 call_index=call_index,
                 prompt=prompt,
                 max_retries=0,
+                expected_marker=expected_marker,
             )
             if completed:
                 self.resume_calls_this_process += 1
@@ -229,6 +278,9 @@ class BenchmarkSuite:
         max_retries: int = 0,
         retry_backoff_seconds: float = 0.0,
         expected_image_path: str | None = None,
+        classification_expected: dict[str, Any] | None = None,
+        run_metadata: dict[str, Any] | None = None,
+        expected_marker: str | None = None,
     ) -> bool:
         if self.store.call_exists(self.run_id, module, scenario, call_index):
             return False
@@ -238,7 +290,11 @@ class BenchmarkSuite:
             prompt=prompt,
             schema_path=schema_path,
             image_paths=image_paths,
-            extra={"expected_image_path": expected_image_path},
+            extra={
+                "expected_image_path": expected_image_path,
+                "dry_run": self.dry_run,
+                "run_id": None if module == "cache" else self.run_id,
+            },
         )
         cached = self.cache.get(cache_key)
         if cached:
@@ -259,6 +315,7 @@ class BenchmarkSuite:
         final_result: CodexResult | None = None
         final_validation: dict[str, Any] = {}
         final_image: dict[str, Any] = {}
+        final_content_valid: bool = True
 
         for attempt in range(max_retries + 1):
             result = self.runner.run(
@@ -271,29 +328,40 @@ class BenchmarkSuite:
                 sandbox=sandbox,
             )
             validation = validate_output(result.last_message, schema_path)
+            classification_validation = (
+                validate_vlm_classification(result.last_message, classification_expected)
+                if classification_expected
+                else {"classification_wrong": False, "classification_error": None}
+            )
             image_validation = (
                 verify_image(expected_image_path, self.config.image.min_bytes)
                 if expected_image_path
                 else {"valid": True, "image_hash": None, "error": None}
             )
+            content_valid = marker_matches(result.last_message, expected_marker)
             attempt_results.append(
                 {
                     "attempt": attempt,
                     "success": result.success,
                     "invalid_json": validation["invalid_json"],
                     "schema_valid": validation["schema_valid"],
+                    "classification_wrong": classification_validation["classification_wrong"],
                     "image_valid": image_validation["valid"],
+                    "content_valid": content_valid,
                     "error_kind": result.error_kind,
                 }
             )
             final_result = result
             final_validation = validation
+            final_validation["classification"] = classification_validation
             final_image = image_validation
+            final_content_valid = content_valid
             if (
                 result.success
                 and not validation["invalid_json"]
                 and validation["schema_valid"] is not False
                 and image_validation["valid"]
+                and content_valid
             ):
                 break
             if attempt < max_retries and retry_backoff_seconds > 0:
@@ -311,7 +379,9 @@ class BenchmarkSuite:
             result=final_result,
             validation=final_validation,
             image_validation=final_image,
+            content_valid=final_content_valid,
             attempts=attempt_results,
+            extra_metadata=run_metadata,
         )
         self.store.record_call(record)
 
@@ -342,7 +412,9 @@ class BenchmarkSuite:
         result: CodexResult,
         validation: dict[str, Any],
         image_validation: dict[str, Any],
+        content_valid: bool,
         attempts: list[dict[str, Any]],
+        extra_metadata: dict[str, Any] | None = None,
     ) -> CallRecord:
         attempt_json_failures = sum(1 for item in attempts if item["invalid_json"])
         attempt_schema_failures = sum(1 for item in attempts if item["schema_valid"] is False)
@@ -352,6 +424,7 @@ class BenchmarkSuite:
             and not validation["invalid_json"]
             and validation["schema_valid"] is not False
             and image_valid
+            and content_valid
         )
         if result.timeout:
             status = "timeout"
@@ -365,12 +438,28 @@ class BenchmarkSuite:
             status = "invalid_json"
         elif validation["schema_valid"] is False:
             status = "schema_invalid"
+        elif not content_valid:
+            status = "content_mismatch"
         elif success:
             status = "success"
         else:
             status = "failure"
 
-        error_message = result.error_message or validation.get("error") or image_validation.get("error")
+        error_message = (
+            result.error_message
+            or validation.get("error")
+            or image_validation.get("error")
+            or (None if content_valid else "expected marker not found in final message")
+        )
+        metadata = {
+            "attempts": attempts,
+            "command": result.command,
+            "image_validation": image_validation,
+        }
+        if validation.get("classification"):
+            metadata["classification"] = validation["classification"]
+        if extra_metadata:
+            metadata.update(extra_metadata)
         return CallRecord(
             run_id=self.run_id,
             module=module,
@@ -405,11 +494,7 @@ class BenchmarkSuite:
             stdout_path=result.stdout_path,
             stderr_path=result.stderr_path,
             last_message_path=result.last_message_path,
-            metadata={
-                "attempts": attempts,
-                "command": result.command,
-                "image_validation": image_validation,
-            },
+            metadata=metadata,
         )
 
     def _record_from_cache(
@@ -471,6 +556,18 @@ class BenchmarkSuite:
         return paths
 
 
+def marker_matches(output: str | None, expected_marker: str | None) -> bool:
+    """True when the model's final message contains the required marker."""
+
+    if expected_marker is None:
+        return True
+    if output is None:
+        return False
+    normalized_output = " ".join(output.split())
+    normalized_marker = " ".join(expected_marker.split())
+    return normalized_marker in normalized_output
+
+
 def validate_output(output: str | None, schema_path: str | None) -> dict[str, Any]:
     if schema_path is None:
         return {
@@ -518,6 +615,95 @@ def validate_output(output: str | None, schema_path: str | None) -> dict[str, An
         "missing_fields": missing,
         "error": error,
     }
+
+
+def load_vlm_manifest(manifest_path: str, dataset_root: str) -> list[dict[str, Any]]:
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    if not isinstance(manifest, list):
+        raise ValueError(f"VLM manifest must be a list: {manifest_path}")
+
+    root = Path(dataset_root)
+    loaded: list[dict[str, Any]] = []
+    for index, item in enumerate(manifest):
+        if not isinstance(item, dict):
+            raise ValueError(f"VLM manifest item {index} must be an object")
+        raw_path = item.get("path")
+        if not raw_path:
+            raise ValueError(f"VLM manifest item {index} is missing `path`")
+        image_path = Path(raw_path)
+        if not image_path.is_absolute():
+            image_path = root / image_path
+        normalized = dict(item)
+        normalized["path"] = str(image_path.resolve())
+        normalized.setdefault("expected_scene_type", "unknown")
+        normalized.setdefault("expected_main_objects", [])
+        return_fields = {
+            "path",
+            "expected_scene_type",
+            "expected_main_objects",
+            "label",
+            "notes",
+        }
+        loaded.append({key: value for key, value in normalized.items() if key in return_fields})
+    return loaded
+
+
+def validate_vlm_classification(
+    output: str | None, expected: dict[str, Any]
+) -> dict[str, Any]:
+    if output is None:
+        return {
+            "classification_wrong": True,
+            "classification_error": "missing final message",
+            "expected_scene_type": expected.get("expected_scene_type"),
+            "predicted_scene_type": None,
+            "object_overlap": 0,
+        }
+    try:
+        parsed = json.loads(output)
+    except json.JSONDecodeError as exc:
+        return {
+            "classification_wrong": True,
+            "classification_error": f"invalid JSON: {exc}",
+            "expected_scene_type": expected.get("expected_scene_type"),
+            "predicted_scene_type": None,
+            "object_overlap": 0,
+        }
+
+    expected_scene_type = str(expected.get("expected_scene_type", "unknown"))
+    predicted_scene_type = str(parsed.get("scene_type", "unknown"))
+    expected_objects = {_normalize_label(value) for value in expected.get("expected_main_objects", [])}
+    raw_predicted_objects = parsed.get("main_objects", [])
+    if not isinstance(raw_predicted_objects, list):
+        raw_predicted_objects = []
+    predicted_objects = {_normalize_label(value) for value in raw_predicted_objects}
+    expected_objects.discard("")
+    predicted_objects.discard("")
+    object_overlap = len(expected_objects & predicted_objects)
+
+    scene_wrong = (
+        expected_scene_type != "unknown"
+        and _normalize_label(predicted_scene_type) != _normalize_label(expected_scene_type)
+    )
+    # Treat scene_type as the classification label. Object overlap is diagnostic:
+    # exact object vocabulary varies across valid VLM descriptions.
+    classification_wrong = scene_wrong
+    return {
+        "classification_wrong": classification_wrong,
+        "classification_error": None,
+        "expected_scene_type": expected_scene_type,
+        "predicted_scene_type": predicted_scene_type,
+        "expected_main_objects": sorted(expected_objects),
+        "predicted_main_objects": sorted(predicted_objects),
+        "object_overlap": object_overlap,
+        "expected_path": expected.get("path"),
+    }
+
+
+def _normalize_label(value: Any) -> str:
+    text = str(value).strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return text.strip("_")
 
 
 def count_schema_field_issues(data: Any, schema: dict[str, Any]) -> tuple[int, int]:
@@ -612,6 +798,10 @@ def supervise(args: argparse.Namespace) -> int:
             command.extend(["--stress-calls", args.stress_calls])
         if args.structured_calls is not None:
             command.extend(["--structured-calls", str(args.structured_calls)])
+        if args.image_count is not None:
+            command.extend(["--image-count", str(args.image_count)])
+        if args.vlm_count is not None:
+            command.extend(["--vlm-count", str(args.vlm_count)])
         if args.simulate_crash_every is not None:
             command.extend(["--simulate-crash-every", str(args.simulate_crash_every)])
         if args.resume_total_calls is not None:
@@ -640,7 +830,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--modules",
         default=None,
-        help="Comma-separated subset: stress,structured,image,resume,cache.",
+        help="Comma-separated subset: stress,structured,image,vlm,resume,cache.",
     )
     parser.add_argument(
         "--stress-calls",
@@ -652,6 +842,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=None,
         help="Override structured.count.",
+    )
+    parser.add_argument(
+        "--image-count",
+        type=int,
+        default=None,
+        help="Override image.count.",
+    )
+    parser.add_argument(
+        "--vlm-count",
+        type=int,
+        default=None,
+        help="Override vlm.count.",
     )
     parser.add_argument(
         "--auto-restart",
@@ -688,6 +890,14 @@ def apply_cli_overrides(config: BenchmarkConfig, args: argparse.Namespace) -> No
         if args.structured_calls <= 0:
             raise ValueError("--structured-calls must be positive")
         config.structured.count = args.structured_calls
+    if args.image_count is not None:
+        if args.image_count <= 0:
+            raise ValueError("--image-count must be positive")
+        config.image.count = args.image_count
+    if args.vlm_count is not None:
+        if args.vlm_count <= 0:
+            raise ValueError("--vlm-count must be positive")
+        config.vlm.count = args.vlm_count
     if args.simulate_crash_every is not None:
         config.resume.simulated_crash_every_calls = args.simulate_crash_every
     if args.resume_total_calls is not None:

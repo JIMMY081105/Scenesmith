@@ -15,6 +15,9 @@ class CacheManager:
     def __init__(self, store: CheckpointStore, config: BenchmarkConfig):
         self.store = store
         self.config = config
+        # Set by the suite once the live codex version is known so that a binary
+        # upgrade invalidates cached results instead of replaying stale ones.
+        self.codex_version: str | None = None
 
     def make_key(
         self,
@@ -43,6 +46,7 @@ class CacheManager:
                 "profile": self.config.codex.profile,
                 "sandbox": self.config.codex.sandbox,
                 "extra_args": self.config.codex.extra_args,
+                "version": self.codex_version,
             }
         cache_key = sha256_text(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         return cache_key, prompt_hash, schema_hash, image_hash

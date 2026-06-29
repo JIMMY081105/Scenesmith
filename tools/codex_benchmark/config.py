@@ -100,6 +100,22 @@ class ImageConfig:
 
 
 @dataclass
+class VlmConfig:
+    enabled: bool = True
+    count: int = 50
+    schema_path: str = "schemas/vlm_result.schema.json"
+    manifest_path: str = "manifests/scenesmith_vlm_images.json"
+    dataset_root: str = "../scenesmith-main"
+    max_retries: int = 1
+    retry_backoff_seconds: float = 1.0
+    prompt_template: str = (
+        "Inspect the attached SceneSmith render or asset image. Return only JSON "
+        "matching the schema. Use one scene_type from the schema enum. Include the "
+        "most important visible objects in main_objects. Do not add markdown."
+    )
+
+
+@dataclass
 class ResumeConfig:
     enabled: bool = True
     total_calls: int = 50
@@ -126,7 +142,8 @@ class CacheTestConfig:
     schema_path: str = "schemas/structured_output.schema.json"
     max_retries: int = 1
     prompt_template: str = (
-        "Return only JSON matching the schema for cache_key_prompt={logical_id}. "
+        "Return only JSON matching the schema for run_id={run_id} "
+        "cache_key_prompt={logical_id}. "
         "Use a deterministic answer and do not mention the physical call index."
     )
 
@@ -154,6 +171,7 @@ class BenchmarkConfig:
     stress: StressConfig = field(default_factory=StressConfig)
     structured: StructuredConfig = field(default_factory=StructuredConfig)
     image: ImageConfig = field(default_factory=ImageConfig)
+    vlm: VlmConfig = field(default_factory=VlmConfig)
     resume: ResumeConfig = field(default_factory=ResumeConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     cache_test: CacheTestConfig = field(default_factory=CacheTestConfig)
@@ -202,6 +220,9 @@ def resolve_config_paths(config: BenchmarkConfig, base_dir: Path) -> BenchmarkCo
     config.codex.cwd = _resolve_path(config.codex.cwd, base_dir)
     config.structured.schema_path = _resolve_path(config.structured.schema_path, base_dir)
     config.image.schema_path = _resolve_path(config.image.schema_path, base_dir)
+    config.vlm.schema_path = _resolve_path(config.vlm.schema_path, base_dir)
+    config.vlm.manifest_path = _resolve_path(config.vlm.manifest_path, base_dir)
+    config.vlm.dataset_root = _resolve_path(config.vlm.dataset_root, base_dir)
     config.cache_test.schema_path = _resolve_path(config.cache_test.schema_path, base_dir)
     return config
 
@@ -212,6 +233,7 @@ def quick_config(config: BenchmarkConfig) -> BenchmarkConfig:
     config.stress.call_counts = [2]
     config.structured.count = 2
     config.image.count = 1
+    config.vlm.count = 1
     config.resume.total_calls = 3
     config.resume.simulated_crash_every_calls = 0
     config.cache_test.unique_prompts = 2

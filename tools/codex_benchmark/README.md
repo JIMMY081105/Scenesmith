@@ -9,6 +9,7 @@ It measures:
 - structured JSON stability and schema failures
 - JSON parsing failure rate and retries
 - image artifact generation stability
+- VLM-style image input inspection with schema-validated JSON
 - checkpoint/resume behavior after interruption
 - prompt/schema/image cache effectiveness
 - CSV, plot, and Markdown reporting
@@ -65,9 +66,23 @@ The supervisor restarts the worker until the resume module reaches `resume.total
 python -m codex_benchmark.benchmark --modules stress,structured
 python -m codex_benchmark.benchmark --modules stress --stress-calls 20
 python -m codex_benchmark.benchmark --modules structured --structured-calls 20
+python -m codex_benchmark.benchmark --modules vlm --vlm-count 10
 python -m codex_benchmark.benchmark --modules image
+python -m codex_benchmark.benchmark --modules image --image-count 20
 python -m codex_benchmark.benchmark --modules cache
 ```
+
+For limited Codex usage budgets, prefer this coverage-first sequence:
+
+```powershell
+python benchmark.py --config config.yaml --modules vlm --vlm-count 5
+python benchmark.py --config config.yaml --modules image --image-count 5
+python benchmark.py --config config.yaml --modules cache
+python benchmark.py --config config.yaml --modules stress --stress-calls 50
+```
+
+Only scale to `--vlm-count 50`, `--image-count 100`, or `--stress-calls 200+`
+after the small coverage pass is clean.
 
 Convenience scripts:
 
@@ -87,7 +102,9 @@ pytest
 ## Real Results
 
 Real benchmark summaries are committed under `reports/` and documented in
-`docs/REAL_BENCHMARK_RESULTS.md`.
+`docs/REAL_BENCHMARK_RESULTS.md`. The usage-limited VLM/image coverage pass and
+native Windows image-artifact blocker are documented in
+`docs/USAGE_GUARDED_COVERAGE_RESULTS.md`.
 
 ## Outputs
 
@@ -97,6 +114,7 @@ Real benchmark summaries are committed under `reports/` and documented in
 - `reports/calls.csv`: one row per logical benchmark call
 - `reports/summary.csv`: aggregate metrics by module and scenario
 - `reports/final_report.md`: automated replacement assessment for SceneSmith, SAGE, robotics workflows, and scene generation pipelines
+- `manifests/scenesmith_vlm_images.json`: local SceneSmith image manifest used for VLM inspection tests
 
 ## Notes
 

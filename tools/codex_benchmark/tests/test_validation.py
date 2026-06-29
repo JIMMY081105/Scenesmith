@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from codex_benchmark.benchmark import count_schema_field_issues, validate_output, verify_image
+from codex_benchmark.benchmark import (
+    count_schema_field_issues,
+    load_vlm_manifest,
+    validate_output,
+    validate_vlm_classification,
+    verify_image,
+)
 
 
 def test_validate_output_accepts_schema_compliant_json() -> None:
@@ -65,3 +71,36 @@ def test_verify_image_accepts_valid_svg(tmp_path: Path) -> None:
 
     assert result["valid"] is True
     assert result["image_hash"]
+
+
+def test_vlm_classification_validation_counts_wrong_scene_type() -> None:
+    output = json.dumps(
+        {
+            "scene_type": "classroom",
+            "main_objects": ["desk", "chair"],
+            "is_simulation_ready": True,
+            "collision_risk": "low",
+            "confidence": 0.8,
+        }
+    )
+    expected = {
+        "path": "image.png",
+        "expected_scene_type": "office",
+        "expected_main_objects": ["desk"],
+    }
+
+    result = validate_vlm_classification(output, expected)
+
+    assert result["classification_wrong"] is True
+    assert result["object_overlap"] == 1
+
+
+def test_load_vlm_manifest_resolves_relative_paths() -> None:
+    manifest_path = Path(__file__).resolve().parents[1] / "manifests" / "scenesmith_vlm_images.json"
+    dataset_root = Path(__file__).resolve().parents[2] / "scenesmith-main"
+
+    items = load_vlm_manifest(str(manifest_path), str(dataset_root))
+
+    assert items
+    assert Path(items[0]["path"]).is_absolute()
+    assert "expected_scene_type" in items[0]

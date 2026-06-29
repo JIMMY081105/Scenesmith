@@ -171,6 +171,7 @@ def _summary_table(rows: list[dict[str, Any]]) -> str:
         "usage_exhausted_count",
         "invalid_json_rate",
         "schema_failure_count",
+        "classification_wrong_rate",
         "avg_retries",
         "cache_hit_rate",
     ]

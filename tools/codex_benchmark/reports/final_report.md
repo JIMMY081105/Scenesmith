@@ -1,9 +1,9 @@
 # Codex CLI Autonomous Pipeline Benchmark
 
-- Run ID: `real_structured_100_20260629_0955`
+- Run ID: `real_vlm_5_20260629_usage_guard_v2`
 - Status: `complete`
 - Codex version: `codex-cli 0.142.3`
-- Config hash: `1c5100f826bc2b21a35cbf4dda0fa75a6e8a06fc735c539a0c20505b11dc07d5`
+- Config hash: `44e47e57a5de88ddf9d3732fbf3289a829e560cea46b6c90ba5aaa5cf9037404`
 - Resume count: `0`
 - Interrupted count: `0`
 
@@ -19,15 +19,15 @@ These verdicts assess CLI reliability as an orchestration substrate. They do not
 
 ## Overall Results
 
-| module | scenario | calls | success_rate | failure_rate | avg_latency_ms | max_latency_ms | timeout_rate | attempt_timeout_count | rate_limit_count | usage_exhausted_count | invalid_json_rate | schema_failure_count | avg_retries | cache_hit_rate |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| all | all | 100 | 1.0000 | 0.0000 | 11509.3874 | 35946.4855 | 0.0000 | 1 | 0 | 0 | 0.0000 | 0 | 0.0100 | 0.0000 |
+| module | scenario | calls | success_rate | failure_rate | avg_latency_ms | max_latency_ms | timeout_rate | attempt_timeout_count | rate_limit_count | usage_exhausted_count | invalid_json_rate | schema_failure_count | classification_wrong_rate | avg_retries | cache_hit_rate |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| all | all | 5 | 1.0000 | 0.0000 | 16209.3598 | 23890.6736 | 0.0000 | 0 | 0 | 0 | 0.0000 | 0 | 0.0000 | 0.0000 | 0.0000 |
 
 ## Scenario Results
 
-| module | scenario | calls | success_rate | failure_rate | avg_latency_ms | max_latency_ms | timeout_rate | attempt_timeout_count | rate_limit_count | usage_exhausted_count | invalid_json_rate | schema_failure_count | avg_retries | cache_hit_rate |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| structured | schema_json | 100 | 1.0000 | 0.0000 | 11509.3874 | 35946.4855 | 0.0000 | 1 | 0 | 0 | 0.0000 | 0 | 0.0100 | 0.0000 |
+| module | scenario | calls | success_rate | failure_rate | avg_latency_ms | max_latency_ms | timeout_rate | attempt_timeout_count | rate_limit_count | usage_exhausted_count | invalid_json_rate | schema_failure_count | classification_wrong_rate | avg_retries | cache_hit_rate |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| vlm | scene_image_json | 5 | 1.0000 | 0.0000 | 16209.3598 | 23890.6736 | 0.0000 | 0 | 0 | 0 | 0.0000 | 0 | 0.0000 | 0.0000 | 0.0000 |
 
 ## Practical Limits
 
@@ -42,6 +42,7 @@ These verdicts assess CLI reliability as an orchestration substrate. They do not
 - Commit SQLite checkpoints after every Codex call; never use only in-memory queues for long jobs.
 - Shard large projects into bounded call batches and resume by run id.
 - Do not run thousand-call autonomous jobs without external scheduling and backoff.
+- Use `--output-schema`, strict JSON parsing, retries, and schema-specific rejection logs.
 
 ## Artifacts
 

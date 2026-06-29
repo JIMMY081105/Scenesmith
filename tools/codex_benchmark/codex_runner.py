@@ -171,7 +171,9 @@ class CodexRunner:
             error_kind=error_kind,
             error_message=error_message,
             rate_limited=(not success) and is_rate_limited(combined),
-            usage_exhausted=(not success) and is_usage_exhausted(combined),
+            usage_exhausted=(not success)
+            and is_usage_exhausted(combined)
+            and not is_rate_limited(combined),
         )
 
     def _build_command(
@@ -236,7 +238,10 @@ class CodexRunner:
                 sample["format"] = Path(output_path).suffix.lstrip(".") or "svg"
                 sample["file_bytes"] = max(sample.get("file_bytes", 0), 256)
             return json.dumps(sample, sort_keys=True)
-        return "CODEX_BENCHMARK_OK dry_run=true"
+        # Echo back the required marker so the dry-run simulates a compliant
+        # codex reply and exercises the marker-verification path.
+        echoed = _extract_ok_marker(prompt)
+        return echoed or "CODEX_BENCHMARK_OK dry_run=true"
 
     def _maybe_write_dry_run_image(self, prompt: str) -> None:
         output_path = _extract_marker(prompt, "BENCHMARK_IMAGE_OUTPUT_PATH")
@@ -317,7 +322,7 @@ def is_rate_limited(text: str) -> bool:
 def is_usage_exhausted(text: str) -> bool:
     return bool(
         re.search(
-            r"usage limit|quota|insufficient_quota|out of credits|billing hard limit|exceeded",
+            r"usage limit|quota|insufficient[_ ]quota|out of credits|billing hard limit",
             text,
             re.I,
         )
@@ -330,6 +335,15 @@ def _safe_process_text(value: Any) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
     return str(value)
+
+
+def _extract_ok_marker(prompt: str) -> str | None:
+    """Pull the `CODEX_*_OK ...` marker the prompt asks the model to echo back."""
+
+    match = re.search(r"CODEX_[A-Z_]+_OK[^\n]*", prompt)
+    if match:
+        return " ".join(match.group(0).split())
+    return None
 
 
 def _extract_marker(prompt: str, marker: str) -> str | None:

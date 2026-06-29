@@ -1,0 +1,92 @@
+[
+  {
+    "path": "tests/integration/reference_renders/furniture_overlay_side_2.png",
+    "expected_scene_type": "furniture_overlay",
+    "expected_main_objects": ["furniture", "overlay"],
+    "label": "furniture overlay side view"
+  },
+  {
+    "path": "tests/integration/reference_renders/furniture_overlay_top.png",
+    "expected_scene_type": "furniture_overlay",
+    "expected_main_objects": ["furniture", "overlay"],
+    "label": "furniture overlay top view"
+  },
+  {
+    "path": "tests/integration/reference_renders/manipuland_overlay_side_2.png",
+    "expected_scene_type": "manipuland_overlay",
+    "expected_main_objects": ["manipuland", "object", "overlay"],
+    "label": "manipuland overlay side view"
+  },
+  {
+    "path": "tests/integration/reference_renders/manipuland_overlay_top.png",
+    "expected_scene_type": "manipuland_overlay",
+    "expected_main_objects": ["manipuland", "object", "overlay"],
+    "label": "manipuland overlay top view"
+  },
+  {
+    "path": "tests/integration/reference_renders/multi_surface_overlay_side_1.png",
+    "expected_scene_type": "furniture_overlay",
+    "expected_main_objects": ["surface", "overlay", "furniture"],
+    "label": "multi-surface overlay side view"
+  },
+  {
+    "path": "tests/integration/reference_renders/multi_surface_overlay_side_2_back.png",
+    "expected_scene_type": "furniture_overlay",
+    "expected_main_objects": ["surface", "overlay", "furniture"],
+    "label": "multi-surface overlay back view"
+  },
+  {
+    "path": "tests/integration/reference_renders/multi_surface_overlay_top_S_2.png",
+    "expected_scene_type": "furniture_overlay",
+    "expected_main_objects": ["surface", "overlay", "furniture"],
+    "label": "multi-surface overlay top view"
+  },
+  {
+    "path": "tests/test_data/office_shelf.png",
+    "expected_scene_type": "shelf_scene",
+    "expected_main_objects": ["shelf", "office"],
+    "label": "office shelf render"
+  },
+  {
+    "path": "tests/test_data/realistic_scene/generated_assets/manipulands/sdf/coffee_mug_1762992163/Image_0.jpg",
+    "expected_scene_type": "object_render",
+    "expected_main_objects": ["coffee_mug", "mug"],
+    "label": "coffee mug asset render"
+  },
+  {
+    "path": "tests/test_data/realistic_scene/generated_assets/sdf/king_bed_1761578419/Image_0.jpg",
+    "expected_scene_type": "object_render",
+    "expected_main_objects": ["bed", "king_bed"],
+    "label": "king bed asset render"
+  },
+  {
+    "path": "tests/test_data/realistic_scene/generated_assets/sdf/office_chair_1761578426/Image_0.jpg",
+    "expected_scene_type": "object_render",
+    "expected_main_objects": ["chair", "office_chair"],
+    "label": "office chair asset render"
+  },
+  {
+    "path": "tests/test_data/realistic_scene/generated_assets/sdf/printer_1761578426/Image_0.jpg",
+    "expected_scene_type": "object_render",
+    "expected_main_objects": ["printer"],
+    "label": "printer asset render"
+  },
+  {
+    "path": "tests/test_data/realistic_scene/generated_assets/sdf/work_desk_1761578426/Image_0.jpg",
+    "expected_scene_type": "object_render",
+    "expected_main_objects": ["desk", "work_desk"],
+    "label": "work desk asset render"
+  },
+  {
+    "path": "media/teaser.webp",
+    "expected_scene_type": "unknown",
+    "expected_main_objects": ["scene", "room"],
+    "label": "SceneSmith teaser image"
+  },
+  {
+    "path": "media/robot_eval.webp",
+    "expected_scene_type": "robot_scene",
+    "expected_main_objects": ["robot"],
+    "label": "robot evaluation image"
+  }
+]

@@ -123,6 +123,8 @@ def _summarize_group(module: str, scenario: str, rows: list[dict[str, Any]]) -> 
     attempt_json_failures = sum(int(row["attempt_json_failures"]) for row in rows)
     attempt_schema_failures = sum(int(row["attempt_schema_failures"]) for row in rows)
     attempt_timeouts = sum(_attempt_timeout_count(row) for row in rows)
+    classification_wrong = sum(_classification_wrong(row) for row in rows)
+    insufficient_dataset_size = any(_metadata_bool(row, "insufficient_dataset_size") for row in rows)
     total_attempts = sum(attempt_counts) or calls
 
     return {
@@ -146,6 +148,9 @@ def _summarize_group(module: str, scenario: str, rows: list[dict[str, Any]]) -> 
         "schema_failure_count": sum(
             1 for row in rows if row["schema_valid"] is not None and not int(row["schema_valid"])
         ),
+        "classification_wrong_count": classification_wrong,
+        "classification_wrong_rate": classification_wrong / calls,
+        "insufficient_dataset_size": int(insufficient_dataset_size),
         "attempt_json_failure_rate": attempt_json_failures / total_attempts,
         "attempt_schema_failure_rate": attempt_schema_failures / total_attempts,
         "hallucinated_fields": sum(int(row["hallucinated_fields"]) for row in rows),
@@ -176,6 +181,9 @@ def _empty_summary(module: str, scenario: str) -> dict[str, Any]:
         "invalid_json_count": 0,
         "invalid_json_rate": 0.0,
         "schema_failure_count": 0,
+        "classification_wrong_count": 0,
+        "classification_wrong_rate": 0.0,
+        "insufficient_dataset_size": 0,
         "attempt_json_failure_rate": 0.0,
         "attempt_schema_failure_rate": 0.0,
         "hallucinated_fields": 0,
@@ -204,6 +212,29 @@ def _attempt_timeout_count(row: dict[str, Any]) -> int:
     if not isinstance(attempts, list):
         return 0
     return sum(1 for attempt in attempts if attempt.get("error_kind") == "timeout")
+
+
+def _classification_wrong(row: dict[str, Any]) -> int:
+    metadata = _metadata(row)
+    classification = metadata.get("classification", {})
+    if not isinstance(classification, dict):
+        return 0
+    return int(bool(classification.get("classification_wrong")))
+
+
+def _metadata_bool(row: dict[str, Any], key: str) -> bool:
+    return bool(_metadata(row).get(key))
+
+
+def _metadata(row: dict[str, Any]) -> dict[str, Any]:
+    metadata_json = row.get("metadata_json")
+    if not metadata_json:
+        return {}
+    try:
+        metadata = json.loads(metadata_json)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return metadata if isinstance(metadata, dict) else {}
 
 
 def _generate_svg_fallback(

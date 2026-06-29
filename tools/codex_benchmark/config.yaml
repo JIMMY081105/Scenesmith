@@ -69,6 +69,19 @@ image:
     run_id={run_id}, scenario={scenario}, call_index={call_index}.
     After writing the file, return only JSON matching the schema.
 
+vlm:
+  enabled: true
+  count: 50
+  schema_path: schemas/vlm_result.schema.json
+  manifest_path: manifests/scenesmith_vlm_images.json
+  dataset_root: ../scenesmith-main
+  max_retries: 1
+  retry_backoff_seconds: 1.0
+  prompt_template: >-
+    Inspect the attached SceneSmith render or asset image. Return only JSON
+    matching the schema. Use one scene_type from the schema enum. Include the
+    most important visible objects in main_objects. Do not add markdown.
+
 resume:
   enabled: true
   total_calls: 50
@@ -91,8 +104,9 @@ cache_test:
   schema_path: schemas/structured_output.schema.json
   max_retries: 1
   prompt_template: >-
-    Return only JSON matching the schema for cache_key_prompt={logical_id}.
-    Use a deterministic answer and do not mention the physical call index.
+    Return only JSON matching the schema for run_id={run_id}
+    cache_key_prompt={logical_id}. Use a deterministic answer and do not mention
+    the physical call index.
 
 reporting:
   enabled: true
