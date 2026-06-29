@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StructuredBenchmarkOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmark_id",
+    "call_index",
+    "scenario",
+    "scene_category",
+    "objects",
+    "quality_flags",
+    "confidence"
+  ],
+  "properties": {
+    "benchmark_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "call_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scene_category": {
+      "type": "string",
+      "enum": [
+        "indoor_scene",
+        "robotics_task",
+        "asset_conversion",
+        "navigation_layout"
+      ]
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "count",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "asset",
+              "obstacle",
+              "robot",
+              "target"
+            ]
+          }
+        }
+      }
+    },
+    "quality_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deterministic",
+        "schema_checked",
+        "requires_human_review"
+      ],
+      "properties": {
+        "deterministic": {
+          "type": "boolean"
+        },
+        "schema_checked": {
+          "type": "boolean"
+        },
+        "requires_human_review": {
+          "type": "boolean"
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

@@ -1,0 +1,106 @@
+name: codex_cli_autonomy_replacement
+random_seed: 20260629
+
+paths:
+  database: outputs/benchmark.sqlite3
+  artifacts_dir: outputs/artifacts
+  reports_dir: reports
+  logs_dir: outputs/logs
+  images_dir: outputs/images
+  schemas_dir: schemas
+
+logging:
+  level: INFO
+  file_name: benchmark.log
+  console: true
+  max_bytes: 10485760
+  backup_count: 5
+
+codex:
+  executable: codex
+  model:
+  profile:
+  cwd: .
+  sandbox: read-only
+  approval_policy: never
+  timeout_seconds: 180
+  skip_git_repo_check: true
+  ignore_user_config: false
+  ignore_rules: false
+  json_events: false
+  extra_args: []
+  env: {}
+
+stress:
+  enabled: true
+  call_counts: [10, 50, 100, 200, 500, 1000, 2000]
+  max_retries: 0
+  prompt_template: >-
+    You are running a Codex CLI stress benchmark. Do not inspect files, run
+    tools, or perform project work. Reply with exactly:
+    CODEX_BENCHMARK_OK run_id={run_id} scenario={scenario}
+    call_index={call_index}
+
+structured:
+  enabled: true
+  count: 300
+  schema_path: schemas/structured_output.schema.json
+  max_retries: 2
+  retry_backoff_seconds: 1.0
+  prompt_template: >-
+    Return only a JSON object matching the configured output schema. Use
+    benchmark_id={run_id}, call_index={call_index}, and scenario={scenario}.
+    Do not add markdown, comments, explanations, or fields that are not in the
+    schema.
+
+image:
+  enabled: true
+  count: 50
+  schema_path: schemas/image_result.schema.json
+  output_format: svg
+  min_bytes: 120
+  sandbox: workspace-write
+  max_retries: 1
+  retry_backoff_seconds: 1.0
+  prompt_template: |-
+    BENCHMARK_IMAGE_OUTPUT_PATH={output_path}
+    Create a deterministic {format} image at BENCHMARK_IMAGE_OUTPUT_PATH.
+    The image should contain simple scene-generation benchmark content for
+    run_id={run_id}, scenario={scenario}, call_index={call_index}.
+    After writing the file, return only JSON matching the schema.
+
+resume:
+  enabled: true
+  total_calls: 50
+  simulated_crash_every_calls: 0
+  auto_restart: false
+  max_auto_restarts: 20
+  prompt_template: >-
+    You are running a checkpoint/resume benchmark. Do not inspect files, run
+    tools, or perform project work. Reply with exactly:
+    CODEX_RESUME_OK run_id={run_id} call_index={call_index}
+
+cache:
+  enabled: true
+  include_codex_fingerprint: true
+
+cache_test:
+  enabled: true
+  unique_prompts: 20
+  repetitions_per_prompt: 5
+  schema_path: schemas/structured_output.schema.json
+  max_retries: 1
+  prompt_template: >-
+    Return only JSON matching the schema for cache_key_prompt={logical_id}.
+    Use a deterministic answer and do not mention the physical call index.
+
+reporting:
+  enabled: true
+  success_threshold: 0.98
+  json_failure_threshold: 0.01
+  timeout_threshold: 0.01
+  cache_hit_threshold: 0.70
+  generate_plots: true
+  calls_csv: calls.csv
+  summary_csv: summary.csv
+  markdown_report: final_report.md

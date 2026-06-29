@@ -1,0 +1,23 @@
+[project]
+name = "codex-cli-autonomy-benchmark"
+version = "0.1.0"
+description = "Benchmark Codex CLI as an orchestration substrate for large autonomous pipelines."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0",
+  "jsonschema>=4.0",
+  "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100

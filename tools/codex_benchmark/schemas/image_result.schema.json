@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImageBenchmarkResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "output_path",
+    "format",
+    "file_bytes",
+    "empty_output",
+    "description"
+  ],
+  "properties": {
+    "output_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "svg",
+        "png",
+        "jpg",
+        "jpeg"
+      ]
+    },
+    "file_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "empty_output": {
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
