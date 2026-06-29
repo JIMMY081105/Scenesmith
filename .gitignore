@@ -2,8 +2,12 @@
 .mujoco_venv
 *.egg-info
 __pycache__
+__MACOSX/
+*.bak
+*.bak_*
 outputs
 .serena
+.claude/
 debug_asset_gen
 debug_rendering
 debug_furniture_agent

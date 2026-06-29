@@ -1981,8 +1981,9 @@ class IndoorSceneGenerationExperiment(BaseExperiment):
             self._start_geometry_server()
             self._start_hssd_server()
             self._start_objaverse_server()
-            self._start_articulated_server()
-            self._start_materials_server()
+            # Minimal HSSD-only run: skip articulated/materials servers for now.
+            # self._start_articulated_server()
+            # self._start_materials_server()
 
             if num_workers == 1:
                 self._run_serial_generation(

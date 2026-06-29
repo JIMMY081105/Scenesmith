@@ -2,6 +2,7 @@
 
 import json
 import logging
+import subprocess
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -202,6 +203,33 @@ def construct_hssd_mesh_path(hssd_dir_path: Path, mesh_id: str) -> Path:
     mesh_path = hssd_dir_path / "objects" / first_char / f"{mesh_id}.glb"
 
     if not mesh_path.exists():
-        raise FileNotFoundError(f"HSSD mesh not found: {mesh_path}")
+        _download_hssd_mesh_if_missing(hssd_dir_path, mesh_id)
+
+    if not mesh_path.exists():
+        raise FileNotFoundError(f"HSSD mesh not found after attempted download: {mesh_path}")
 
     return mesh_path
+
+
+def _download_hssd_mesh_if_missing(hssd_dir_path: Path, mesh_id: str) -> None:
+    """Download exactly one missing HSSD GLB from Hugging Face."""
+    first_char = mesh_id[0]
+    rel_path = f"objects/{first_char}/{mesh_id}.glb"
+
+    hssd_dir_path.mkdir(parents=True, exist_ok=True)
+
+    console_logger.info(f"Downloading one HSSD mesh only: {rel_path}")
+
+    subprocess.run(
+        [
+            "hf",
+            "download",
+            "hssd/hssd-models",
+            rel_path,
+            "--repo-type",
+            "dataset",
+            "--local-dir",
+            str(hssd_dir_path),
+        ],
+        check=True,
+    )

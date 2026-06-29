@@ -378,10 +378,16 @@ class StatefulFloorPlanAgent(BaseStatefulAgent, BaseFloorPlanAgent):
         # still need to know the actual last render dir for copying to final output.
         self.final_render_dir = render_dir
 
-        scores_path = render_dir / "scores.yaml"
-        with open(scores_path, "w") as f:
-            yaml.dump(scores_dict, f, default_flow_style=False, sort_keys=False)
-        console_logger.info(f"Scores saved to: {scores_path}")
+        if render_dir is not None:
+            scores_path = render_dir / "scores.yaml"
+            with open(scores_path, "w") as f:
+                yaml.dump(scores_dict, f, default_flow_style=False, sort_keys=False)
+            console_logger.info(f"Scores saved to: {scores_path}")
+        else:
+            console_logger.warning(
+                "No render directory was produced by floor-plan vision tools; "
+                "skipping scores.yaml save and continuing."
+            )
 
         # Shift checkpoints only during iteration critiques, not final critique.
         # This preserves N-1 checkpoint for reset check in _finalize_scene_and_scores.

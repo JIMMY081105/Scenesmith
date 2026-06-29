@@ -114,6 +114,12 @@ def run(cfg: DictConfig):
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
+    # Qwen/DashScope OpenAI-compatible endpoint works better with Chat Completions,
+    # not OpenAI Responses API.
+    from agents import set_default_openai_api, set_tracing_disabled
+    set_default_openai_api("chat_completions")
+    set_tracing_disabled(True)
+
     # Configure separate tracing API key if provided.
     tracing_api_key = os.environ.get("OPENAI_TRACING_KEY")
     if tracing_api_key:
