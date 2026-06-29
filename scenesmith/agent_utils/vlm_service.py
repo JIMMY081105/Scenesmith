@@ -1,8 +1,11 @@
 import logging
+import os
 
 from typing import Any
 
 from openai import OpenAI
+
+from scenesmith.agent_utils.codex_vlm_backend import CodexVLMBackend
 
 console_logger = logging.getLogger(__name__)
 
@@ -16,15 +19,36 @@ class VLMService:
     Chat API for standard models) based on model capabilities.
     """
 
-    def __init__(self, service_tier: str | None = None) -> None:
-        """Initialize OpenAI client.
+    def __init__(
+        self,
+        service_tier: str | None = None,
+        backend: str | None = None,
+        codex_backend: CodexVLMBackend | None = None,
+    ) -> None:
+        """Initialize VLM backend.
 
         Args:
             service_tier: Optional service tier for API processing priority.
                 Valid values: "default", "flex", "priority", or None to use
                 project default.
+            backend: Backend name. Defaults to the SCENESMITH_VLM_BACKEND
+                environment variable, then "openai". Supported values are
+                "openai" and "codex".
+            codex_backend: Optional preconfigured Codex backend, mainly for tests.
         """
-        self.client = OpenAI()
+        self.backend = (
+            backend or os.getenv("SCENESMITH_VLM_BACKEND", "openai")
+        ).lower()
+        if self.backend not in {"openai", "codex"}:
+            raise ValueError(
+                f"Unsupported VLM backend '{self.backend}'. "
+                "Expected 'openai' or 'codex'."
+            )
+
+        self.client = OpenAI() if self.backend == "openai" else None
+        self.codex_backend = (
+            codex_backend if codex_backend is not None else CodexVLMBackend()
+        ) if self.backend == "codex" else None
         # Cache for model type detection.
         self._reasoning_models = {"gpt-5", "gpt-5.2", "o3", "o4"}
         self.service_tier = service_tier
@@ -54,6 +78,17 @@ class VLMService:
         Returns:
             Response content as string.
         """
+        if self.backend == "codex":
+            assert self.codex_backend is not None
+            return self.codex_backend.create_completion(
+                model=model,
+                messages=messages,
+                reasoning_effort=reasoning_effort,
+                verbosity=verbosity,
+                response_format=response_format,
+                vision_detail=vision_detail,
+            )
+
         # Check if model supports reasoning.
         if model in self._reasoning_models:
             # Use Responses API with reasoning for reasoning-capable models.

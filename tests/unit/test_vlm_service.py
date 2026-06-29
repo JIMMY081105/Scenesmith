@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scenesmith.agent_utils.codex_vlm_backend import CodexVLMBackend
 from scenesmith.agent_utils.vlm_service import VLMService
 
 
@@ -33,6 +34,67 @@ class TestVLMService(unittest.TestCase):
 
         # Verify OpenAI client was created.
         mock_openai_class.assert_called_once()
+
+    @patch("scenesmith.agent_utils.vlm_service.OpenAI")
+    def test_codex_backend_does_not_initialize_openai(self, mock_openai_class):
+        """Codex backend must not require OPENAI_API_KEY at construction."""
+        codex_backend = Mock()
+        codex_backend.create_completion.return_value = '{"ok": true}'
+
+        vlm_service = VLMService(backend="codex", codex_backend=codex_backend)
+
+        self.assertEqual(vlm_service.backend, "codex")
+        self.assertIsNone(vlm_service.client)
+        mock_openai_class.assert_not_called()
+
+        result = vlm_service.create_completion(
+            model="gpt-5",
+            messages=[{"role": "user", "content": "Return JSON"}],
+            reasoning_effort="low",
+            verbosity="low",
+            response_format={"type": "json_object"},
+        )
+
+        self.assertEqual(result, '{"ok": true}')
+        codex_backend.create_completion.assert_called_once()
+
+    @patch("scenesmith.agent_utils.codex_vlm_backend.subprocess.run")
+    def test_codex_backend_returns_json_object(self, mock_run):
+        """Codex backend reads --output-last-message and validates JSON object."""
+        backend = CodexVLMBackend(
+            executable="codex",
+            cwd=self.temp_dir,
+            artifact_dir=self.temp_dir / "artifacts",
+            timeout_seconds=30,
+        )
+
+        def fake_run(command, input, text, capture_output, timeout, cwd):
+            last_message_path = Path(
+                command[command.index("--output-last-message") + 1]
+            )
+            last_message_path.parent.mkdir(parents=True, exist_ok=True)
+            last_message_path.write_text('{"result": "ok"}', encoding="utf-8")
+            completed = Mock()
+            completed.returncode = 0
+            completed.stdout = ""
+            completed.stderr = ""
+            return completed
+
+        mock_run.side_effect = fake_run
+
+        result = backend.create_completion(
+            model="gpt-5",
+            messages=[{"role": "user", "content": "Return JSON"}],
+            reasoning_effort="low",
+            verbosity="low",
+            response_format={"type": "json_object"},
+        )
+
+        self.assertEqual(result, '{"result": "ok"}')
+        command = mock_run.call_args[0][0]
+        self.assertIn("exec", command)
+        self.assertIn("--skip-git-repo-check", command)
+        self.assertEqual(command[-1], "-")
 
     @patch("scenesmith.agent_utils.vlm_service.OpenAI")
     def test_create_completion_basic(self, mock_openai_class):
